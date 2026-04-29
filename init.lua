@@ -130,10 +130,9 @@ end)
 -- Центральная функция детонации
 -- This function handles the actual damage and destruction of the explosion
 function gun_lib.detonate(pos, strength, thrower_name)
-    -- Play explosion sound
-    core.sound_play("explosion", {pos = pos, gain = 1.5, max_hear_distance = 64})
-    
-    -- Visual particles for the boom
+    core.sound_play("explosion", {pos = pos, gain = 2.0, max_hear_distance = 64}) -- Лучше заменить на "explosion"
+    local radius = math.max(1, strength * 3)    
+    -- Частицы взрыва
     core.add_particle({
         pos = pos,
         velocity = {x=0, y=0, z=0},
@@ -144,21 +143,35 @@ function gun_lib.detonate(pos, strength, thrower_name)
         texture = "tnt_boom.png", -- Ensure you have this texture or change it
         glow = 10,
     })
-
-    -- Damage entities/players in radius
-    local radius = strength * 3
-    local objects = core.get_objects_inside_radius(pos, radius)
-    for _, obj in pairs(objects) do
-        local obj_pos = obj:get_pos()
-        local dist = vector.distance(pos, obj_pos)
-        -- Damage drops off with distance
-        local damage = (1 - (dist / radius)) * (strength * 20)
-        
-        if damage > 0 then
-            obj:punch(core.get_player_by_name(thrower_name) or obj, 1.0, {
-                full_punch_interval = 1.0,
-                damage_groups = {fleshy = damage},
-            })
+    if strength > 0 then
+        -- Урон энтити
+        for _, obj in pairs(core.get_objects_inside_radius(pos, radius)) do
+            if obj:is_player() or obj:get_luaentity() then
+                -- Урон падает в зависимости от расстояния от центра
+                local dist = vector.distance(pos, obj:get_pos())
+                local dmg = math.max(1, (radius - dist) / radius * (strength * 5))
+                obj:punch(obj, 1.0, {full_punch_interval=1.0, damage_groups={fleshy=dmg}})
+            end
+        end       
+        -- Разрушение блоков (Strength 4+)
+        if strength >= 4 then
+            local r = math.floor(strength)
+            for x = -r, r do
+                for y = -r, r do
+                    for z = -r, r do
+                        if x*x + y*y + z*z <= r*r then
+                            local p = vector.add(pos, {x=x, y=y, z=z})
+                            local node = core.get_node(p)
+                            if node.name ~= "air" and node.name ~= "ignore" then
+                                -- Защита от разрушения неразрушимых блоков (админиум и тд)
+                                if core.registered_nodes[node.name] and not core.registered_nodes[node.name].on_blast then
+                                   core.remove_node(p)
+                                end
+                            end
+                        end
+                    end
+                end
+            end
         end
     end
 end
