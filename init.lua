@@ -128,61 +128,100 @@ end)
 -----------------------------------------
 
 -- Центральная функция детонации
+-- This function handles the actual damage and destruction of the explosion
 function gun_lib.detonate(pos, strength, thrower_name)
-    core.sound_play("gun_shot", {pos = pos, gain = 2.0, max_hear_distance = 64}) -- Лучше заменить на "explosion"
+    -- Play explosion sound
+    core.sound_play("explosion", {pos = pos, gain = 1.5, max_hear_distance = 64})
     
-    local radius = math.max(1, strength * 1.5)
-    
-    -- Частицы взрыва
-    core.add_particlespawner({
-        amount = 30 * strength,
-        time = 0.5,
-        minpos = vector.subtract(pos, radius),
-        maxpos = vector.add(pos, radius),
-        minvel = {x=-5, y=-5, z=-5},
-        maxvel = {x=5, y=5, z=5},
-        texture = "smoke_puff.png",
-        glow = 14,
-        size = 15
+    -- Visual particles for the boom
+    core.add_particle({
+        pos = pos,
+        velocity = {x=0, y=0, z=0},
+        acceleration = {x=0, y=0, z=0},
+        expirationtime = 0.5,
+        size = strength * 10,
+        collisiondetection = false,
+        texture = "tnt_boom.png", -- Ensure you have this texture or change it
+        glow = 10,
     })
 
-    if strength > 0 then
-        -- Урон энтити
-        for _, obj in pairs(core.get_objects_inside_radius(pos, radius)) do
-            if obj:is_player() or obj:get_luaentity() then
-                -- Урон падает в зависимости от расстояния от центра
-                local dist = vector.distance(pos, obj:get_pos())
-                local dmg = math.max(1, (radius - dist) / radius * (strength * 5))
-                obj:punch(obj, 1.0, {full_punch_interval=1.0, damage_groups={fleshy=dmg}})
-            end
-        end
+    -- Damage entities/players in radius
+    local radius = strength * 3
+    local objects = core.get_objects_inside_radius(pos, radius)
+    for _, obj in pairs(objects) do
+        local obj_pos = obj:get_pos()
+        local dist = vector.distance(pos, obj_pos)
+        -- Damage drops off with distance
+        local damage = (1 - (dist / radius)) * (strength * 20)
         
-        -- Разрушение блоков (Strength 4+)
-        if strength >= 4 then
-            local r = math.floor(strength)
-            for x = -r, r do
-                for y = -r, r do
-                    for z = -r, r do
-                        if x*x + y*y + z*z <= r*r then
-                            local p = vector.add(pos, {x=x, y=y, z=z})
-                            local node = core.get_node(p)
-                            if node.name ~= "air" and node.name ~= "ignore" then
-                                -- Защита от разрушения неразрушимых блоков (админиум и тд)
-                                if core.registered_nodes[node.name] and not core.registered_nodes[node.name].on_blast then
-                                   core.remove_node(p)
-                                end
-                            end
-                        end
-                    end
+        if damage > 0 then
+            obj:punch(core.get_player_by_name(thrower_name) or obj, 1.0, {
+                full_punch_interval = 1.0,
+                damage_groups = {fleshy = damage},
+            })
+        end
+    end
+end
+-- Внутренняя функция для обработки типов гранат
+local function trigger_detonation(pos, def, thrower)
+    local exp_type = def.type or "HE" -- По умолчанию осколочная (High Explosive)
+
+    if exp_type == "HE" then
+        gun_lib.detonate(pos, def.strength or 1, thrower)
+        
+    elseif exp_type == "SG" then
+        core.sound_play(def.detonate_sound or "smoke_hiss", {pos = pos, gain = 1.0, max_hear_distance = 32})
+        core.add_particlespawner({
+            amount = def.smoke_amount or 300,
+            time = def.smoke_duration or 12,
+            minpos = vector.subtract(pos, 3),
+            maxpos = vector.add(pos, 3),
+            minvel = {x=-1, y=0, z=-1},
+            maxvel = {x=1, y=1, z=1},
+            minexptime = 3,
+            maxexptime = 5,
+            minsize = 30,
+            maxsize = 50,
+            texture = "smoke_puff.png",
+            glow = 0
+        })
+        
+    elseif exp_type == "Flash" then
+        core.sound_play(def.detonate_sound or "flashbang_boom", {pos = pos, gain = 3.0, max_hear_distance = 64})
+        local radius = def.flash_radius or 15
+        local duration = def.flash_duration or 3.0
+        
+        for _, obj in pairs(core.get_objects_inside_radius(pos, radius)) do
+            if obj:is_player() then
+                local head_pos = vector.add(obj:get_pos(), {x=0, y=1.62, z=0})
+                local ray = core.raycast(pos, head_pos, true, false)
+                local hit = ray:next()
+                
+                if hit and hit.type == "object" and hit.ref == obj then
+                    local pname = obj:get_player_name()
+                    local flash_id = obj:hud_add({
+                        hud_elem_type = "image",
+                        position = {x = 0.5, y = 0.5},
+                        scale = {x = -100, y = -100},
+                        text = "flash_white.png", 
+                        alignment = {x = 0, y = 0},
+                        offset = {x = 0, y = 0}
+                    })
+                    core.after(duration, function()
+                        local p = core.get_player_by_name(pname)
+                        if p then p:hud_remove(flash_id) end
+                    end)
                 end
             end
         end
     end
+
+    -- Оставляем возможность добавлять УНИКАЛЬНЫЙ код даже поверх встроенных типов
+    if def.on_detonate then def.on_detonate(pos, thrower) end
 end
 
 -- Регистрация типа взрывчатки (Граната/Ракета)
 function gun_lib.register_explosive(name, def)
-    -- Регистрация как предмета (чтобы брать в инвентарь)
     core.register_craftitem(name, {
         description = def.description,
         inventory_image = def.inventory_image,
@@ -204,10 +243,9 @@ function gun_lib.register_explosive(name, def)
         end
     })
 
-    -- Регистрация сущности-снаряда (летящая иконка)
     core.register_entity(name .. "_entity", {
         initial_properties = {
-            physical = false, -- Управляем коллизией сами через Raycast
+            physical = false,
             visual = "sprite",
             textures = {def.inventory_image},
             visual_size = {x=0.5, y=0.5},
@@ -223,14 +261,12 @@ function gun_lib.register_explosive(name, def)
         on_step = function(self, dtime)
             self.age = self.age + dtime
             
-            -- Таймер взрыва (для гранат)
             if def.timer and self.age >= def.timer then
-                gun_lib.detonate(self.object:get_pos(), def.strength or 1, self.thrower)
+                trigger_detonation(self.object:get_pos(), def, self.thrower)
                 self.object:remove()
                 return
             end
 
-            -- Хвост из частиц для ракет
             if def.gravity == 0 then
                 core.add_particle({
                     pos = self.object:get_pos(),
@@ -238,7 +274,6 @@ function gun_lib.register_explosive(name, def)
                 })
             end
 
-            -- Умный Raycast для проверки коллизии (впереди летящего снаряда)
             local pos = self.object:get_pos()
             local vel = self.object:get_velocity()
             local next_pos = vector.add(pos, vector.multiply(vel, dtime))
@@ -246,19 +281,16 @@ function gun_lib.register_explosive(name, def)
             local ray = core.raycast(pos, next_pos, true, false)
             local hit = ray:next()
             
-            -- Пропускаем самого бросившего
             while hit and hit.type == "object" and hit.ref:get_player_name() == self.thrower do
                 hit = ray:next()
             end
 
             if hit then
                 if def.on_impact then
-                    -- Ракеты взрываются при касании
                     local hit_p = hit.intersection_point or next_pos
-                    gun_lib.detonate(hit_p, def.strength or 1, self.thrower)
+                    trigger_detonation(hit_p, def, self.thrower)
                     self.object:remove()
                 else
-                    -- Гранаты рикошетят (считаем отражение вектора)
                     local norm = hit.intersection_normal
                     if norm then
                         local dot = vel.x*norm.x + vel.y*norm.y + vel.z*norm.z
@@ -267,9 +299,17 @@ function gun_lib.register_explosive(name, def)
                             y = vel.y - 2 * dot * norm.y,
                             z = vel.z - 2 * dot * norm.z
                         }
-                        -- Гасим скорость при отскоке (0.5)
-                        self.object:set_velocity(vector.multiply(reflect, 0.5))
-                        self.object:set_pos(hit.intersection_point) -- Сдвигаем к стене
+                        
+                        local new_vel = vector.multiply(reflect, 0.5)
+                        
+                        if vector.length(new_vel) < 1.0 and norm.y > 0.5 then
+                            new_vel = {x=0, y=0, z=0}
+                            self.object:set_acceleration({x=0, y=0, z=0})
+                        end
+
+                        self.object:set_velocity(new_vel)
+                        local safe_pos = vector.add(hit.intersection_point, vector.multiply(norm, 0.05))
+                        self.object:set_pos(safe_pos)
                     end
                 end
             end
@@ -344,7 +384,8 @@ local function shot_logic(itemstack, user, settings)
 
     local ammo = meta:get_int("ammo")
     if ammo <= 0 then
-        core.sound_play("gun_click", {object = user, gain = 0.6})
+        -- NEW: Uses empty_sound parameter!
+        core.sound_play(settings.empty_sound or "gun_click", {object = user, gain = 0.6})
         last_shot_time[name] = now_us
         return itemstack
     end
@@ -651,30 +692,20 @@ gun_lib.register_attachment("gunlib:vertical_grip", {description = "Vertical Gri
 -- Пушки...
 gun_lib.register("gunlib:deagle", {
     description = "Desert Eagle", inventory_image = "deagle.png", damage = 4, mag_size = 7,
-    recoil = 0.2, spread = 0.04, move_speed = 0.95, fire_mode = "semi", fire_interval = 0.5, reload_time = 1.5, zoom_fov = 68,
-    ammo_type = "gunlib:ammo_45", sound = "gun_shot", reload_sound = "gun_reload", silenced_sound = "gun_silenced",
+    recoil = 0.2, spread = 0.04, move_speed = 0.95, fire_mode = "semi", fire_interval = 0.5, reload_time = 3, zoom_fov = 68,
+    ammo_type = "gunlib:ammo_45", sound = "deagle_shot", reload_sound = "deagle_reload", silenced_sound = "deagle_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true}
 })
 
 gun_lib.register("gunlib:ak47", {
     description = "AK-47", inventory_image = "ak47.png", texture_empty = "ak47_empty.png", damage = 1, mag_size = 30,
-    recoil = 0.05, spread = 0.08, move_speed = 0.85, fire_mode = "auto", fire_interval = 0.1, reload_time = 3.0, zoom_fov = 66,
-    magazine_type = "gunlib:mag_ak47", sound = "gun_shot", reload_sound = "ak47_reload", silenced_sound = "ak47_silenced",
+	empty_sound = "ak47_click",
+    recoil = 0.05, spread = 0.08, move_speed = 0.85, fire_mode = "auto", fire_interval = 0.1, reload_time = 2.4, zoom_fov = 66,
+    magazine_type = "gunlib:mag_ak47", sound = "ak47_shot", reload_sound = "ak47_reload", silenced_sound = "ak47_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true, grip = true}
 })
 
 -- === НОВЫЕ ПРИМЕРЫ ВЗРЫВЧАТКИ ===
-
--- 1. Граната F1 (Можно бросать рукой)
-gun_lib.register_explosive("gunlib:grenade_f1", {
-    description = "F1 Frag Grenade",
-    inventory_image = "grenade.png",
-    is_throwable = true,  -- Работает от клика в руке
-    timer = 3.0,          -- Взрыв через 3 секунды
-    gravity = 9.8,        -- Падает вниз по дуге
-    velocity = 15,        -- Сила броска рукой
-    strength = 3          -- Урон сильный, но блоки не ломает (1-3)
-})
 
 -- 2. Снаряд для РПГ-7 (Блоки ломает, летит прямо, взрыв при касании)
 gun_lib.register_explosive("gunlib:rocket_pg7v", {
@@ -714,8 +745,9 @@ gun_lib.register("gunlib:awp", {
     recoil = 0.4, spread = 0.0, move_speed = 0.65,
     fire_mode = "semi", fire_interval = 1.1, reload_time = 2.5, zoom_fov = 58,
     magazine_type = "gunlib:mag_awp",
-    sound = "gun_shot",
-	silenced_sound = "awp_silenced",
+    sound = "awp_shot",
+	reload_sound = "awp_reload",
+	silenced_sound = "deagle_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true}
 })
 
@@ -724,8 +756,49 @@ gun_lib.register("gunlib:remington", {
     inventory_image = "remington.png",
     damage = 2, pellets = 8, mag_size = 6,
     recoil = 0.5, spread = 0.15, move_speed = 0.8,
-    fire_mode = "spray", fire_interval = 0.8, reload_time = 3.0, zoom_fov = 70,
+    fire_mode = "spray", fire_interval = 0.8, reload_time = 4.0, zoom_fov = 70,
     ammo_type = "gunlib:ammo_45",
-    sound = "gun_shot",
+    sound = "remington_shot",
+	reload_sound = "remington_reload",
     allowed_slots = {muzzle = true, optic = true}
+})
+
+-- 1. Граната F1 (High Explosive)
+gun_lib.register_explosive("gunlib:grenade_f1", {
+    description = "F1 Frag Grenade",
+    inventory_image = "grenade.png",
+    type = "HE",          -- NEW!
+    is_throwable = true,
+    timer = 3.0,
+    gravity = 9.8,
+    velocity = 15,
+    strength = 3
+})
+
+-- 2. Дымовая граната (Smoke Grenade)
+gun_lib.register_explosive("gunlib:grenade_smoke", {
+    description = "Smoke Grenade",
+    inventory_image = "grenade_smoke.png",
+    type = "SG",          -- NEW!
+    is_throwable = true,
+    timer = 2.5,
+    gravity = 9.8,
+    velocity = 15,
+    smoke_amount = 400,   -- Custom parameters!
+    smoke_duration = 15,
+    detonate_sound = "smoke_hiss"
+})
+
+-- 3. Светошумовая граната (Flashbang)
+gun_lib.register_explosive("gunlib:grenade_flash", {
+    description = "Flashbang",
+    inventory_image = "grenade_flash.png",
+    type = "Flash",       -- NEW!
+    is_throwable = true,
+    timer = 2.0,
+    gravity = 9.8,
+    velocity = 15,
+    flash_radius = 20,    -- Custom parameters!
+    flash_duration = 4.0,
+    detonate_sound = "flashbang_boom"
 })
