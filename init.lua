@@ -1,4 +1,4 @@
-local gun_lib = {}
+local gunlib = {}
 local attachments = {}
 local player_huds = {} 
 local last_shot_time = {} 
@@ -28,7 +28,7 @@ core.register_craftitem("gunlib:mag_awp", {
     inventory_image = "mag_awp.png",
 })
 
-function gun_lib.register_attachment(name, def)
+function gunlib.register_attachment(name, def)
     attachments[name] = def
     core.register_craftitem(name, {
         description = def.description,
@@ -129,7 +129,7 @@ end)
 
 -- Центральная функция детонации
 -- This function handles the actual damage and destruction of the explosion
-function gun_lib.detonate(pos, strength, thrower_name)
+function gunlib.detonate(pos, strength, thrower_name)
     core.sound_play("explosion", {pos = pos, gain = 2.0, max_hear_distance = 64}) -- Лучше заменить на "explosion"
     local radius = math.max(1, strength * 3)    
     -- Частицы взрыва
@@ -180,7 +180,7 @@ local function trigger_detonation(pos, def, thrower)
     local exp_type = def.type or "HE" -- По умолчанию осколочная (High Explosive)
 
     if exp_type == "HE" then
-        gun_lib.detonate(pos, def.strength or 1, thrower)
+        gunlib.detonate(pos, def.strength or 1, thrower)
         
     elseif exp_type == "SG" then
         core.sound_play(def.detonate_sound or "smoke_hiss", {pos = pos, gain = 1.0, max_hear_distance = 32})
@@ -234,7 +234,7 @@ local function trigger_detonation(pos, def, thrower)
 end
 
 -- Регистрация типа взрывчатки (Граната/Ракета)
-function gun_lib.register_explosive(name, def)
+function gunlib.register_explosive(name, def)
     core.register_craftitem(name, {
         description = def.description,
         inventory_image = def.inventory_image,
@@ -575,7 +575,7 @@ end)
 -- 7. РЕГИСТРАЦИЯ ПУШЕК И ПУСКОВЫХ УСТАНОВОК
 -----------------------------------------
 
-function gun_lib.register(name, def)
+function gunlib.register(name, def)
     gun_settings[name] = def
     core.register_tool(name, {
         description = def.description,
@@ -683,9 +683,9 @@ function gun_lib.register(name, def)
 end
 
 -- Функция-обертка для Гранатометов/РПГ
-function gun_lib.register_weapon_explosive(name, def)
+function gunlib.register_weapon_explosive(name, def)
     def.fire_mode = "explosive"
-    gun_lib.register(name, def)
+    gunlib.register(name, def)
 end
 
 -----------------------------------------
@@ -693,24 +693,24 @@ end
 -----------------------------------------
 
 -- Обвесы... (оставлены без изменений)
-gun_lib.register_attachment("gunlib:silencer", {description = "Silencer", short_name = "SIL", inventory_image = "silencer.png", slot = "muzzle", damage_mult = 0.85, recoil_mult = 0.5, is_silencer = true})
-gun_lib.register_attachment("gunlib:heavy_barrel", {description = "Heavy Barrel", short_name = "H-BAR", inventory_image = "heavy_barrel.png", slot = "muzzle", damage_mult = 1.3, fire_interval_mult = 1.5, speed_mult = 0.85})
-gun_lib.register_attachment("gunlib:red_dot", {description = "Red Dot Sight", short_name = "SIGHT", inventory_image = "red_dot.png", slot = "optic", zoom_fov = 53, spread_mult = 0.8})
-gun_lib.register_attachment("gunlib:2x_scope", {description = "2X Scope", short_name = "2X-SCOPE", inventory_image = "2x_scope.png", slot = "optic", zoom_fov = 28, spread_mult = 0.7})
-gun_lib.register_attachment("gunlib:4x_scope", {description = "4X Scope", short_name = "4X-SCOPE", inventory_image = "4x_scope.png", slot = "optic", zoom_fov = 13, spread_mult = 0.6})
-gun_lib.register_attachment("gunlib:8x_scope", {description = "8X Scope", short_name = "8X-SCOPE", inventory_image = "8x_scope.png", slot = "optic", zoom_fov = 4, spread_mult = 0.4})
-gun_lib.register_attachment("gunlib:laser", {description = "Laser Sight", short_name = "LASER", inventory_image = "laser.png", slot = "underbarrel", is_laser = true, spread_mult = 0.6})
-gun_lib.register_attachment("gunlib:vertical_grip", {description = "Vertical Grip", short_name = "V-GRIP", inventory_image = "vertical_grip.png", slot = "grip", recoil_mult = 0.6, spread_mult = 0.85})
+gunlib.register_attachment("gunlib:silencer", {description = "Silencer", short_name = "SIL", inventory_image = "silencer.png", slot = "muzzle", damage_mult = 0.85, recoil_mult = 0.5, is_silencer = true})
+gunlib.register_attachment("gunlib:heavy_barrel", {description = "Heavy Barrel", short_name = "H-BAR", inventory_image = "heavy_barrel.png", slot = "muzzle", damage_mult = 1.3, fire_interval_mult = 1.5, speed_mult = 0.85})
+gunlib.register_attachment("gunlib:red_dot", {description = "Red Dot Sight", short_name = "SIGHT", inventory_image = "red_dot.png", slot = "optic", zoom_fov = 53, spread_mult = 0.8})
+gunlib.register_attachment("gunlib:2x_scope", {description = "2X Scope", short_name = "2X-SCOPE", inventory_image = "2x_scope.png", slot = "optic", zoom_fov = 28, spread_mult = 0.7})
+gunlib.register_attachment("gunlib:4x_scope", {description = "4X Scope", short_name = "4X-SCOPE", inventory_image = "4x_scope.png", slot = "optic", zoom_fov = 13, spread_mult = 0.6})
+gunlib.register_attachment("gunlib:8x_scope", {description = "8X Scope", short_name = "8X-SCOPE", inventory_image = "8x_scope.png", slot = "optic", zoom_fov = 4, spread_mult = 0.4})
+gunlib.register_attachment("gunlib:laser", {description = "Laser Sight", short_name = "LASER", inventory_image = "laser.png", slot = "underbarrel", is_laser = true, spread_mult = 0.6})
+gunlib.register_attachment("gunlib:vertical_grip", {description = "Vertical Grip", short_name = "V-GRIP", inventory_image = "vertical_grip.png", slot = "grip", recoil_mult = 0.6, spread_mult = 0.85})
 
 -- Пушки...
-gun_lib.register("gunlib:deagle", {
+gunlib.register("gunlib:deagle", {
     description = "Desert Eagle", inventory_image = "deagle.png", damage = 4, mag_size = 7,
     recoil = 0.2, spread = 0.04, move_speed = 0.95, fire_mode = "semi", fire_interval = 0.5, reload_time = 3, zoom_fov = 68,
     ammo_type = "gunlib:ammo_45", sound = "deagle_shot", reload_sound = "deagle_reload", silenced_sound = "deagle_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true}
 })
 
-gun_lib.register("gunlib:ak47", {
+gunlib.register("gunlib:ak47", {
     description = "AK-47", inventory_image = "ak47.png", texture_empty = "ak47_empty.png", damage = 1, mag_size = 30,
 	empty_sound = "ak47_click",
     recoil = 0.05, spread = 0.08, move_speed = 0.85, fire_mode = "auto", fire_interval = 0.1, reload_time = 2.4, zoom_fov = 66,
@@ -721,7 +721,7 @@ gun_lib.register("gunlib:ak47", {
 -- === НОВЫЕ ПРИМЕРЫ ВЗРЫВЧАТКИ ===
 
 -- 2. Снаряд для РПГ-7 (Блоки ломает, летит прямо, взрыв при касании)
-gun_lib.register_explosive("gunlib:rocket_pg7v", {
+gunlib.register_explosive("gunlib:rocket_pg7v", {
     description = "PG-7V Rocket",
     inventory_image = "rocket.png",
     is_throwable = false, -- Руками бросать нельзя, только заряжать
@@ -731,7 +731,7 @@ gun_lib.register_explosive("gunlib:rocket_pg7v", {
 })
 
 -- 3. Сама пусковая установка РПГ-7
-gun_lib.register_weapon_explosive("gunlib:rpg7", {
+gunlib.register_weapon_explosive("gunlib:rpg7", {
     description = "RPG-7 Launcher",
     inventory_image = "rpg7.png",
 	texture_empty = "rpg7_empty.png",
@@ -750,7 +750,7 @@ gun_lib.register_weapon_explosive("gunlib:rpg7", {
     allowed_slots = {optic = true} -- На РПГ можно повесить прицел!
 })
 
-gun_lib.register("gunlib:awp", {
+gunlib.register("gunlib:awp", {
     description = "AWP",
     inventory_image = "awp.png",
 	texture_empty = "awp_empty.png",
@@ -764,7 +764,7 @@ gun_lib.register("gunlib:awp", {
     allowed_slots = {muzzle = true, optic = true, underbarrel = true}
 })
 
-gun_lib.register("gunlib:remington", {
+gunlib.register("gunlib:remington", {
     description = "Remington 870",
     inventory_image = "remington.png",
     damage = 2, pellets = 8, mag_size = 6,
@@ -777,7 +777,7 @@ gun_lib.register("gunlib:remington", {
 })
 
 -- 1. Граната F1 (High Explosive)
-gun_lib.register_explosive("gunlib:grenade_f1", {
+gunlib.register_explosive("gunlib:grenade_f1", {
     description = "F1 Frag Grenade",
     inventory_image = "grenade.png",
     type = "HE",          -- NEW!
@@ -789,7 +789,7 @@ gun_lib.register_explosive("gunlib:grenade_f1", {
 })
 
 -- 2. Дымовая граната (Smoke Grenade)
-gun_lib.register_explosive("gunlib:grenade_smoke", {
+gunlib.register_explosive("gunlib:grenade_smoke", {
     description = "Smoke Grenade",
     inventory_image = "grenade_smoke.png",
     type = "SG",          -- NEW!
@@ -803,7 +803,7 @@ gun_lib.register_explosive("gunlib:grenade_smoke", {
 })
 
 -- 3. Светошумовая граната (Flashbang)
-gun_lib.register_explosive("gunlib:grenade_flash", {
+gunlib.register_explosive("gunlib:grenade_flash", {
     description = "Flashbang",
     inventory_image = "grenade_flash.png",
     type = "Flash",       -- NEW!
