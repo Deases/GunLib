@@ -1,4 +1,4 @@
-local gunlib = {}
+gunlib = {}
 local attachments = {}
 local player_huds = {} 
 local last_shot_time = {} 
@@ -207,10 +207,13 @@ local function trigger_detonation(pos, def, thrower)
         for _, obj in pairs(core.get_objects_inside_radius(pos, radius)) do
             if obj:is_player() then
                 local head_pos = vector.add(obj:get_pos(), {x=0, y=1.62, z=0})
-                local ray = core.raycast(pos, head_pos, true, false)
+                local vec_to_target = vector.direction(head_pos,pos)
+                local player_look_dir = obj:get_look_dir()
+                local dot = vector.dot(player_look_dir,vec_to_target)
+                local ray = core.raycast(head_pos, pos, true, false)
                 local hit = ray:next()
                 
-                if hit and hit.type == "object" and hit.ref == obj then
+                if hit and hit.type == "object" and hit.ref == obj and dot > 0.5 then
                     local pname = obj:get_player_name()
                     local flash_id = obj:hud_add({
                         hud_elem_type = "image",
@@ -246,6 +249,7 @@ function gunlib.register_explosive(name, def)
             local start_p = {x = pos.x, y = pos.y + (user:get_properties().eye_height or 1.62), z = pos.z}
             
             local obj = core.add_entity(start_p, name .. "_entity")
+            core.sound_play("grenade_throw", {pos = pos, gain = 1.0, max_hear_distance = 5})
             if obj then
                 local ent = obj:get_luaentity()
                 ent.thrower = user:get_player_name()
@@ -455,7 +459,15 @@ local function shot_logic(itemstack, user, settings)
     if settings.is_silenced then fire_snd = settings.silenced_sound or "gun_silenced" end
     core.sound_play(fire_snd, {object = user, gain = 1.0})
     
+
     user:set_look_vertical(user:get_look_vertical() - (settings.recoil or 0.1))
+
+    for j=1, 10 do
+        core.after(0.05*j, function()
+            user:set_look_vertical(user:get_look_vertical() + ((settings.recoil or 0.1)*0.1))       
+        end)
+    end
+    
     ammo = ammo - 1
     meta:set_int("ammo", ammo)
     
