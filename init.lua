@@ -17,15 +17,35 @@ core.register_craftitem("gunlib:ammo_45", {
     inventory_image = "ammo_45.png",
 })
 
+core.register_craftitem("gunlib:shotgun_shell", {
+    description = "Shotgun Shell",
+    inventory_image = "shotgun_shell.png",
+})
+
 -- Новый предмет: Магазин для AK-47
 core.register_craftitem("gunlib:mag_ak47", {
     description = "AK-47 Magazine (30 rnds)",
     inventory_image = "mag_ak47.png",
 })
 
+core.register_craftitem("gunlib:mag_tommy", {
+    description = "Tommy Gun Magazine (60 rnds)",
+    inventory_image = "mag_tommy.png",
+})
+
+core.register_craftitem("gunlib:mag_mp5", {
+    description = "MP5 Magazine (20 rnds)",
+    inventory_image = "mag_mp5.png",
+})
+
 core.register_craftitem("gunlib:mag_awp", {
     description = "AWP Magazine (5rnd)",
     inventory_image = "mag_awp.png",
+})
+
+core.register_craftitem("gunlib:mag_deagle", {
+    description = "Deagle Magazine (7rnd)",
+    inventory_image = "deagle_mag.png",
 })
 
 function gunlib.register_attachment(name, def)
@@ -718,7 +738,7 @@ gunlib.register_attachment("gunlib:vertical_grip", {description = "Vertical Grip
 gunlib.register("gunlib:deagle", {
     description = "Desert Eagle", inventory_image = "deagle.png", damage = 4, mag_size = 7,
     recoil = 0.2, spread = 0.04, move_speed = 0.95, fire_mode = "semi", fire_interval = 0.5, reload_time = 3, zoom_fov = 68,
-    ammo_type = "gunlib:ammo_45", sound = "deagle_shot", reload_sound = "deagle_reload", silenced_sound = "deagle_silenced",
+    ammo_type = "gunlib:ammo_45", magazine_type="gunlib:mag_deagle", sound = "deagle_shot", reload_sound = "deagle_reload", silenced_sound = "deagle_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true}
 })
 
@@ -727,6 +747,22 @@ gunlib.register("gunlib:ak47", {
 	empty_sound = "ak47_click",
     recoil = 0.05, spread = 0.08, move_speed = 0.85, fire_mode = "auto", fire_interval = 0.1, reload_time = 2.4, zoom_fov = 66,
     magazine_type = "gunlib:mag_ak47", sound = "ak47_shot", reload_sound = "ak47_reload", silenced_sound = "ak47_silenced",
+    allowed_slots = {muzzle = true, optic = true, underbarrel = true, grip = true}
+})
+
+gunlib.register("gunlib:tommy", {
+    description = "Tommy Gun", inventory_image = "tommy.png", texture_empty = "tommy_empty.png", damage = 2, mag_size = 60,
+	empty_sound = "ak47_click",
+    recoil = 0.07, spread = 0.07, move_speed = 0.7, fire_mode = "auto", fire_interval = 0.3, reload_time = 2.4, zoom_fov = 66,
+    magazine_type = "gunlib:mag_tommy", sound = "tommy_shot", reload_sound = "ak47_reload", silenced_sound = "ak47_silenced",
+    allowed_slots = {muzzle = false, optic = true, underbarrel = true, grip = true}
+})
+
+gunlib.register("gunlib:mp5", {
+    description = "MP5", inventory_image = "mp5.png", texture_empty = "mp5_empty.png", damage = 1, mag_size = 20,
+	empty_sound = "ak47_click",
+    recoil = 0.02, spread = 0.16, move_speed = 0.96, fire_mode = "auto", fire_interval = 0.03, reload_time = 2.0, zoom_fov = 70,
+    magazine_type = "gunlib:mag_mp5", sound = "mp5_shot", reload_sound = "ak47_reload", silenced_sound = "ak47_silenced",
     allowed_slots = {muzzle = true, optic = true, underbarrel = true, grip = true}
 })
 
@@ -782,7 +818,7 @@ gunlib.register("gunlib:remington", {
     damage = 2, pellets = 8, mag_size = 6,
     recoil = 0.5, spread = 0.15, move_speed = 0.8,
     fire_mode = "spray", fire_interval = 0.8, reload_time = 4.0, zoom_fov = 70,
-    ammo_type = "gunlib:ammo_45",
+    ammo_type = "gunlib:shotgun_shell",
     sound = "remington_shot",
 	reload_sound = "remington_reload",
     allowed_slots = {muzzle = true, optic = true}
