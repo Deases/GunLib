@@ -1,0 +1,1 @@
+enable_smooth_recoil (Smooth Recoil Experimental) bool false

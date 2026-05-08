@@ -4,6 +4,7 @@ local player_huds = {}
 local last_shot_time = {} 
 local player_physics = {} -- Для отслеживания скорости игрока
 local gun_settings = {}
+local set_enable_smooth_recoil = tostring(core.settings:get("enable_smooth_recoil"))
 
 -- Список всех возможных слотов в игре
 local ALL_SLOTS = {"muzzle", "optic", "underbarrel", "grip"}
@@ -482,11 +483,15 @@ local function shot_logic(itemstack, user, settings)
 
     user:set_look_vertical(user:get_look_vertical() - (settings.recoil or 0.1))
 
-    for j=1, 10 do
-        core.after(0.05*j, function()
-            user:set_look_vertical(user:get_look_vertical() + ((settings.recoil or 0.1)*0.1))       
-        end)
+    if set_enable_smooth_recoil == "true" then
+        for j=1, 10 do
+            core.after(0.05*j, function()
+
+                user:set_look_vertical(user:get_look_vertical() + ((settings.recoil or 0.1)*0.1))  
+            end)
+        end
     end
+
     
     ammo = ammo - 1
     meta:set_int("ammo", ammo)
@@ -834,6 +839,17 @@ gunlib.register_explosive("gunlib:grenade_f1", {
     gravity = 9.8,
     velocity = 15,
     strength = 3
+})
+
+gunlib.register_explosive("gunlib:grenade_nuke", {
+    description = "Nuke Grenade",
+    inventory_image = "grenade_nuke.png",
+    type = "HE",          -- NEW!
+    is_throwable = true,
+    timer = 10.0,
+    gravity = 9.8,
+    velocity = 15,
+    strength = 80
 })
 
 -- 2. Дымовая граната (Smoke Grenade)
